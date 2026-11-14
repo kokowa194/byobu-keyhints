@@ -62,7 +62,7 @@ for _ in $(seq 50); do [ -n "$(t list-clients -F '#{client_name}')" ] && break; 
 client="$(t list-clients -F '#{client_name}' | head -1)"
 check "inner client attached" "/" "$client"
 to send-keys -t o C-a; sleep 0.3
-check "prefix hint shown while the prefix is held" "[Ctrl+a] %:Split left/right" "$(t display -p -c "$client" '#{E:@byobu_hint}')"
+check "prefix hint shown while the prefix is held" "[Ctrl+a] %:Split left/right" "$(t list-clients -t t -F '#{E:@byobu_hint}')"   # display -p -c fails on tmux 3.2a
 echo "       bottom row: $(to capture-pane -p -t o | tail -1 | sed 's/ *$//')"
 to send-keys -t o H; sleep 0.3
 check_eq "prefix + H turns the hint off" "0" "$(t show -gv @byobu_hint_enabled)"
