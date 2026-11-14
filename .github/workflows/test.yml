@@ -9,11 +9,12 @@ permissions:
 
 jobs:
   test:
-    # 22.04 ships tmux 3.2a (the documented minimum), 24.04 ships tmux 3.4.
+    # 22.04 ships tmux 3.2a (the documented minimum), 24.04 ships tmux 3.4,
+    # 26.04 is the newest LTS (checks we still work with a current tmux).
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
     runs-on: ${{ matrix.os }}
     env:
       TERM: xterm-256color

@@ -22,7 +22,7 @@ check_eq() {
   if [[ "$3" == "$2" ]]; then pass=$((pass+1)); echo "ok   - $1"
   else fail=$((fail+1)); echo "FAIL - $1"; echo "       expected: $2"; echo "       actual:   $3"; fi
 }
-hint() { t display -p -t "${1:-t}" '#{E:@byobu_hint}'; }
+hint() { t display -p -t t '#{E:@byobu_hint}'; }
 
 echo "# Loading the config"
 t -f /dev/null new -d -s t -x 200 -y 40
@@ -96,7 +96,9 @@ check_eq "bad option is rejected" "2" "$(bash "$ROOT/install.sh" --bogus </dev/n
 # An empty (or missing) .tmux.conf has nothing worth backing up.
 : > "$BYOBU_CONFIG_DIR/.tmux.conf"; rm -f "$BYOBU_CONFIG_DIR"/.tmux.conf.bak-*
 bash "$ROOT/install.sh" </dev/null >/dev/null
-check_eq "no backup is made for an empty .tmux.conf" "0" "$(ls -a "$BYOBU_CONFIG_DIR" | grep -c '\.bak-')"
+backups=("$BYOBU_CONFIG_DIR"/.tmux.conf.bak-*)   # unmatched glob stays literal, so test the first entry
+[ -e "${backups[0]}" ] || backups=()
+check_eq "no backup is made for an empty .tmux.conf" "0" "${#backups[@]}"
 bash "$ROOT/uninstall.sh" >/dev/null
 # A block written under the old name (byobu-plugin-mine) must still be removable,
 # and install.sh must not stack a second block on top of it.

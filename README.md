@@ -192,7 +192,7 @@ bash tests/run.sh     # does the plugin behave as described?
 `tests/run.sh` starts tmux servers on private sockets and checks the hint for each situation, real rendering when the prefix is pressed, the `H` key, the optional rgb fix, and install/uninstall.
 It also fails if a non-ASCII character appears in any `.tmux` file.
 
-GitHub Actions runs both on Ubuntu 22.04 (tmux 3.2a, the documented minimum) and Ubuntu 24.04 (tmux 3.4); see the `test` badge at the top.
+GitHub Actions runs both on Ubuntu 22.04 (tmux 3.2a, the documented minimum), Ubuntu 24.04 (tmux 3.4) and Ubuntu 26.04; see the `test` badge at the top.
 
 ## Tested on
 
