@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Remove only the block(s) that install.sh appended to .tmux.conf.
+set -euo pipefail
+
+# Current name first; byobu-plugin-mine is the name used before v0.1.0 was published.
+readonly NAMES=(byobu-keyhints byobu-plugin-mine)
+
+config_dir() {
+  if [ -n "${BYOBU_CONFIG_DIR:-}" ]; then echo "$BYOBU_CONFIG_DIR"
+  elif [ -d "$HOME/.byobu" ]; then echo "$HOME/.byobu"
+  else echo "${XDG_CONFIG_HOME:-$HOME/.config}/byobu"
+  fi
+}
+
+CONF="$(config_dir)/.tmux.conf"
+if [ ! -f "$CONF" ]; then
+  echo "Not installed: $CONF"
+  exit 0
+fi
+
+removed=0
+for name in "${NAMES[@]}"; do
+  begin="# >>> $name >>>"
+  end="# <<< $name <<<"
+  grep -qF "$begin" "$CONF" || continue
+  tmp="$(mktemp)"
+  awk -v b="$begin" -v e="$end" '
+    $0 == b { skip = 1; next }
+    $0 == e { skip = 0; next }
+    !skip
+  ' "$CONF" > "$tmp"
+  cat "$tmp" > "$CONF"   # overwrite instead of mv: keeps the file's permissions and symlinks
+  rm -f "$tmp"
+  removed=1
+done
+
+if [ "$removed" -eq 0 ]; then
+  echo "Not installed: $CONF"
+  exit 0
+fi
+
+echo "Uninstalled: $CONF"
+echo "Restart byobu to fully revert (F5 leaves escape-time and the key bindings in place)."

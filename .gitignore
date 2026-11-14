@@ -1,0 +1,4 @@
+.python-version
+.claude/settings.local.json
+*.bak-*
+*.bak
