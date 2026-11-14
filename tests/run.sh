@@ -22,7 +22,7 @@ check_eq() {
   if [[ "$3" == "$2" ]]; then pass=$((pass+1)); echo "ok   - $1"
   else fail=$((fail+1)); echo "FAIL - $1"; echo "       expected: $2"; echo "       actual:   $3"; fi
 }
-hint() { t display -p -t "${1:-t}" '#{E:@byobu_hint}'; }
+hint() { t display -p -t t '#{E:@byobu_hint}'; }
 
 echo "# Loading the config"
 t -f /dev/null new -d -s t -x 200 -y 40
@@ -62,7 +62,7 @@ for _ in $(seq 50); do [ -n "$(t list-clients -F '#{client_name}')" ] && break; 
 client="$(t list-clients -F '#{client_name}' | head -1)"
 check "inner client attached" "/" "$client"
 to send-keys -t o C-a; sleep 0.3
-check "prefix hint shown while the prefix is held" "[Ctrl+a] %:Split left/right" "$(t display -p -c "$client" '#{E:@byobu_hint}')"
+check "prefix hint shown while the prefix is held" "[Ctrl+a] %:Split left/right" "$(t list-clients -t t -F '#{E:@byobu_hint}')"   # display -p -c fails on tmux 3.2a
 echo "       bottom row: $(to capture-pane -p -t o | tail -1 | sed 's/ *$//')"
 to send-keys -t o H; sleep 0.3
 check_eq "prefix + H turns the hint off" "0" "$(t show -gv @byobu_hint_enabled)"
@@ -96,7 +96,9 @@ check_eq "bad option is rejected" "2" "$(bash "$ROOT/install.sh" --bogus </dev/n
 # An empty (or missing) .tmux.conf has nothing worth backing up.
 : > "$BYOBU_CONFIG_DIR/.tmux.conf"; rm -f "$BYOBU_CONFIG_DIR"/.tmux.conf.bak-*
 bash "$ROOT/install.sh" </dev/null >/dev/null
-check_eq "no backup is made for an empty .tmux.conf" "0" "$(ls -a "$BYOBU_CONFIG_DIR" | grep -c '\.bak-')"
+backups=("$BYOBU_CONFIG_DIR"/.tmux.conf.bak-*)   # unmatched glob stays literal, so test the first entry
+[ -e "${backups[0]}" ] || backups=()
+check_eq "no backup is made for an empty .tmux.conf" "0" "${#backups[@]}"
 bash "$ROOT/uninstall.sh" >/dev/null
 # A block written under the old name (byobu-plugin-mine) must still be removable,
 # and install.sh must not stack a second block on top of it.

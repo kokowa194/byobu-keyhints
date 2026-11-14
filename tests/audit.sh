@@ -42,9 +42,8 @@ check_eq "every if-shell uses -F (format only)" "" \
   "$(code "${TMUX_FILES[@]}" | grep -n 'if-shell' | grep -v 'if-shell -F' | head -3)"
 
 echo "# install.sh / uninstall.sh touch only byobu's config directory"
-# Run both against a throwaway HOME and list every file that appeared or changed.
+# Run both against a throwaway HOME and list every file that appeared.
 mkdir -p "$TMPHOME/home"
-before="$(cd "$TMPHOME" && find . | sort)"
 HOME="$TMPHOME/home" env -u BYOBU_CONFIG_DIR -u XDG_CONFIG_HOME bash "$ROOT/install.sh" --with-rgb-fix </dev/null >/dev/null 2>&1
 after_install="$(cd "$TMPHOME" && find . -type f | sort)"
 check_eq "install creates only .tmux.conf (no backup: it started empty)" \
@@ -53,7 +52,6 @@ HOME="$TMPHOME/home" env -u BYOBU_CONFIG_DIR -u XDG_CONFIG_HOME bash "$ROOT/unin
 check_eq "uninstall leaves .tmux.conf empty again" "0" "$(wc -c < "$TMPHOME/home/.config/byobu/.tmux.conf" | tr -d ' ')"
 check_eq "nothing was written outside the throwaway HOME's byobu directory" "" \
   "$(cd "$TMPHOME" && find . -type f ! -path './home/.config/byobu/*' | head -3)"
-unset before
 
 echo "# Files are plain text"
 if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
