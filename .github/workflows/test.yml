@@ -19,7 +19,9 @@ jobs:
     env:
       TERM: xterm-256color
     steps:
-      - uses: actions/checkout@v4
+      # Pinned to a commit SHA: a tag can be moved to other code, a SHA cannot.
+      # When updating, take the SHA from `git ls-remote --tags` and keep the comment in sync.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install tmux and shellcheck
         run: sudo apt-get update && sudo apt-get install -y tmux shellcheck
       - run: tmux -V
