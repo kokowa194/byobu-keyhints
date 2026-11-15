@@ -5,6 +5,7 @@
 ![byobu: 6.11](https://img.shields.io/badge/byobu-6.11-informational)
 ![tmux: 3.2+](https://img.shields.io/badge/tmux-3.2%2B-1BB91F)
 ![platform: WSL2 Ubuntu 24.04](https://img.shields.io/badge/platform-WSL2_Ubuntu_24.04-orange)
+![CI: Ubuntu 22.04 | 24.04 | 26.04](https://img.shields.io/badge/CI-Ubuntu_22.04_%7C_24.04_%7C_26.04-2088FF)
 ![shell: bash only](https://img.shields.io/badge/shell-bash_only-lightgrey)
 ![no sudo, no network](https://img.shields.io/badge/install-no_sudo%2C_no_network-success)
 
@@ -42,7 +43,7 @@ so it costs nothing and switches the instant you press a key.
 
 ### Requirements
 
-- byobu with the tmux backend, and tmux 3.2 or newer (the plugin uses `current_file`; only tmux 3.4 has been tested). Pick tmux with `byobu-select-backend`.
+- byobu with the tmux backend, and tmux 3.2 or newer (the plugin uses `current_file`; CI tests tmux 3.2a, 3.4 and 3.6, see [Tested on](#tested-on)). Pick tmux with `byobu-select-backend`.
 - bash. No sudo and no extra packages.
 
 ```bash
@@ -220,11 +221,16 @@ bash tests/run.sh     # does the plugin behave as described?
 `tests/run.sh` starts tmux servers on private sockets and checks the hint for each situation, real rendering when the prefix is pressed, the `H` key, the optional rgb fix, and install/uninstall.
 It also fails if a non-ASCII character appears in any `.tmux` file.
 
-GitHub Actions runs both on Ubuntu 22.04 (tmux 3.2a, the documented minimum), Ubuntu 24.04 (tmux 3.4) and Ubuntu 26.04; see the `test` badge at the top.
+GitHub Actions runs both on Ubuntu 22.04 (tmux 3.2a, the documented minimum), Ubuntu 24.04 (tmux 3.4) and Ubuntu 26.04 (tmux 3.6); see the `test` badge at the top.
 
 ## Tested on
 
-WSL2 Ubuntu 24.04 / byobu 6.11 / tmux 3.4 / Windows Terminal
+| How | Environment |
+|---|---|
+| By hand (daily use) | WSL2 Ubuntu 24.04 / byobu 6.11 / tmux 3.4 / Windows Terminal |
+| CI, `tests/audit.sh` + `tests/run.sh` | Ubuntu 22.04 (tmux 3.2a), Ubuntu 24.04 (tmux 3.4), Ubuntu 26.04 (tmux 3.6) |
+
+CI runs tmux without byobu, so byobu itself is only checked by hand.
 
 ## License
 
