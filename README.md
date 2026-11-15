@@ -5,13 +5,17 @@
 ![byobu: 6.11](https://img.shields.io/badge/byobu-6.11-informational)
 ![tmux: 3.2+](https://img.shields.io/badge/tmux-3.2%2B-1BB91F)
 ![platform: WSL2 Ubuntu 24.04](https://img.shields.io/badge/platform-WSL2_Ubuntu_24.04-orange)
+![CI: Ubuntu 22.04 | 24.04 | 26.04](https://img.shields.io/badge/CI-Ubuntu_22.04_%7C_24.04_%7C_26.04-2088FF)
 ![shell: bash only](https://img.shields.io/badge/shell-bash_only-lightgrey)
 ![no sudo, no network](https://img.shields.io/badge/install-no_sudo%2C_no_network-success)
 
 A small plugin for byobu (tmux backend). v0.1.0
 
+![Demo: the hint in the status bar changes as you split panes, press the prefix, zoom, enter copy mode and turn on "type into all panes"](docs/demo.svg)
+
 1. **Context-sensitive shortcut hints**: the status bar shows the keys that work in your current situation.
 2. **Optional: rgb-garbage fix**: stops strings like `11;rgb:1717/1414/2121` from leaking into your prompt. Off by default; `install.sh` asks whether you want it.
+3. **Optional: default 2x2 layout**: every new byobu session starts split into four panes, all opened in your home directory. Off by default; `install.sh` asks whether you want it. See [the layout section](#default-2x2-layout-optional).
 
 ```
  0:bash 1:vim*   Shift+Arrows:Move Ctrl+a then Ctrl+Arrows:Resize Shift+F11:Zoom Ctrl+F6:Close  2x3.0GHz 11-14 21:30
@@ -39,7 +43,7 @@ so it costs nothing and switches the instant you press a key.
 
 ### Requirements
 
-- byobu with the tmux backend, and tmux 3.2 or newer (the plugin uses `current_file`; only tmux 3.4 has been tested). Pick tmux with `byobu-select-backend`.
+- byobu with the tmux backend, and tmux 3.2 or newer (the plugin uses `current_file`; CI tests tmux 3.2a, 3.4 and 3.6, see [Tested on](#tested-on)). Pick tmux with `byobu-select-backend`.
 - bash. No sudo and no extra packages.
 
 ```bash
@@ -58,11 +62,12 @@ cd ~/.local/share/byobu-keyhints
 ./install.sh
 ```
 
-`install.sh` does three things. Running it again never adds a second block.
+`install.sh` does four things. Running it again never adds a second block.
 
 1. Backs up your existing `.tmux.conf` (as `.tmux.conf.bak-<timestamp>`; skipped if the file is empty).
 2. Asks whether to enable the optional [rgb-garbage fix](#the-rgb-garbage-fix-optional) (default: no).
-3. Appends a block to byobu's `.tmux.conf` that loads this plugin:
+3. Asks whether to enable the optional [default 2x2 layout](#default-2x2-layout-optional) (default: no). If yes, it writes `windows.tmux` next to `.tmux.conf`.
+4. Appends a block to byobu's `.tmux.conf` that loads this plugin:
 
 ```tmux
 # >>> byobu-keyhints >>>
@@ -76,9 +81,11 @@ To skip the question, pass a flag:
 ```bash
 ./install.sh --with-rgb-fix   # enable the fix
 ./install.sh --no-rgb-fix     # don't enable it
+./install.sh --with-layout    # enable the 2x2 layout
+./install.sh --no-layout      # don't enable it
 ```
 
-Without a terminal (for example in a script) and without a flag, the fix is left off.
+The flags can be combined. Without a terminal (for example in a script) and without a flag, both options are left off.
 To change the choice later, run `./uninstall.sh` and then `./install.sh` again, or add or remove the `set -g @byobu_fix_osc_garbage 1` line by hand.
 
 The block goes into `~/.byobu/.tmux.conf` if `~/.byobu` exists, otherwise into `~/.config/byobu/.tmux.conf` (the same lookup order as byobu).
@@ -128,7 +135,7 @@ Run `./uninstall.sh` and `./install.sh` again from the new location.
 ./uninstall.sh
 ```
 
-Removes only the block that `install.sh` added, leaving the rest of `.tmux.conf` untouched.
+Removes only the block that `install.sh` added, leaving the rest of `.tmux.conf` untouched. If you enabled the 2x2 layout, it also empties `windows.tmux` (only when the file is exactly what `install.sh` wrote).
 To fully restore `escape-time` and the key bindings, restart byobu.
 
 ## The rgb-garbage fix (optional)
@@ -147,6 +154,28 @@ If junk still appears, raise the value by adding `set -sg escape-time 100` at th
 
 The same symptom has been reported outside byobu, for example in
 [microsoft/terminal #18004](https://github.com/microsoft/terminal/issues/18004).
+
+## Default 2x2 layout (optional)
+
+With `./install.sh --with-layout`, every new byobu session starts like this, all four panes opened in your home directory and the cursor in the top-left one:
+
+```
++-----------+-----------+
+|     0     |     2     |
++-----------+-----------+
+|     1     |     3     |
++-----------+-----------+
+```
+
+It works through byobu's own `windows.tmux` file (`~/.config/byobu/windows.tmux`), which byobu hands to tmux when it creates a session. The plugin adds no code of its own for this.
+
+Things to know:
+
+- **Only new sessions get the layout.** An already running session is not changed.
+- **`byobu` always starts a new session** while `windows.tmux` is non-empty. Normally byobu offers a menu to attach to an existing session; with a custom `windows.tmux` it skips that menu. If byobu auto-starts when you open a WSL terminal, each new terminal gets its own fresh 2x2 session.
+- **`windows.tmux` is one line.** byobu splits the file on whitespace into tmux's command line, so comments and quotes cannot be used. For the same reason the home directory is written as an absolute path.
+- **A `windows.tmux` you wrote yourself is never overwritten.** `install.sh --with-layout` stops and tells you. `uninstall.sh` only empties the file if its content is exactly what `install.sh` wrote.
+- To use another layout, edit `windows.tmux` by hand (for example `new-session ; split-window -h`). Run `./uninstall.sh` first if you want the plugin to forget about the file.
 
 ## Windows Terminal conflicts
 
@@ -185,18 +214,23 @@ bash tests/run.sh     # does the plugin behave as described?
 
 - the shell scripts contain no network commands, `sudo`, `eval`, `base64`, `chmod`/`chown` or recursive `rm`, and no URLs appear in any script or `.tmux` file;
 - the `.tmux` files run no shell commands (no `run-shell`, no `#(...)`, and every `if-shell` uses `-F`);
-- `install.sh` / `uninstall.sh`, run against a throwaway `HOME`, create only `.config/byobu/.tmux.conf`, and uninstall leaves it empty again;
+- `install.sh` / `uninstall.sh`, run against a throwaway `HOME`, create only `.config/byobu/.tmux.conf` and `windows.tmux`, and uninstall leaves both empty again;
 - every tracked file is plain text;
 - `shellcheck` is clean (skipped if it is not installed).
 
 `tests/run.sh` starts tmux servers on private sockets and checks the hint for each situation, real rendering when the prefix is pressed, the `H` key, the optional rgb fix, and install/uninstall.
 It also fails if a non-ASCII character appears in any `.tmux` file.
 
-GitHub Actions runs both on Ubuntu 22.04 (tmux 3.2a, the documented minimum), Ubuntu 24.04 (tmux 3.4) and Ubuntu 26.04; see the `test` badge at the top.
+GitHub Actions runs both on Ubuntu 22.04 (tmux 3.2a, the documented minimum), Ubuntu 24.04 (tmux 3.4) and Ubuntu 26.04 (tmux 3.6); see the `test` badge at the top.
 
 ## Tested on
 
-WSL2 Ubuntu 24.04 / byobu 6.11 / tmux 3.4 / Windows Terminal
+| How | Environment |
+|---|---|
+| By hand (daily use) | WSL2 Ubuntu 24.04 / byobu 6.11 / tmux 3.4 / Windows Terminal |
+| CI, `tests/audit.sh` + `tests/run.sh` | Ubuntu 22.04 (tmux 3.2a), Ubuntu 24.04 (tmux 3.4), Ubuntu 26.04 (tmux 3.6) |
+
+CI runs tmux without byobu, so byobu itself is only checked by hand.
 
 ## License
 

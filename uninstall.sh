@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
-# Remove only the block(s) that install.sh appended to .tmux.conf.
+# Remove only the block(s) that install.sh appended to .tmux.conf,
+# and windows.tmux if (and only if) it is exactly the layout install.sh wrote.
 set -euo pipefail
+
+# shellcheck source=lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 # Current name first; byobu-plugin-mine is the name used before v0.1.0 was published.
 readonly NAMES=(byobu-keyhints byobu-plugin-mine)
 
-config_dir() {
-  if [ -n "${BYOBU_CONFIG_DIR:-}" ]; then echo "$BYOBU_CONFIG_DIR"
-  elif [ -d "$HOME/.byobu" ]; then echo "$HOME/.byobu"
-  else echo "${XDG_CONFIG_HOME:-$HOME/.config}/byobu"
-  fi
-}
-
 CONF="$(config_dir)/.tmux.conf"
+WINDOWS_FILE="$(dirname "$CONF")/windows.tmux"
 if [ ! -f "$CONF" ]; then
   echo "Not installed: $CONF"
   exit 0
@@ -33,6 +31,12 @@ for name in "${NAMES[@]}"; do
   rm -f "$tmp"
   removed=1
 done
+
+if [ -s "$WINDOWS_FILE" ] && [ "$(cat "$WINDOWS_FILE")" = "$(layout_line)" ]; then
+  : > "$WINDOWS_FILE"   # empty it (byobu ignores an empty file) instead of deleting
+  removed=1
+  echo "Removed the 2x2 layout from $WINDOWS_FILE"
+fi
 
 if [ "$removed" -eq 0 ]; then
   echo "Not installed: $CONF"
