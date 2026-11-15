@@ -19,7 +19,7 @@ check_eq() { # check_eq <description> <expected> <actual>
 # Code lines only: drop comment-only lines so prose cannot trigger a match.
 code() { grep -hv '^[[:space:]]*#' "$@"; }
 
-SCRIPTS=("$ROOT/install.sh" "$ROOT/uninstall.sh")
+SCRIPTS=("$ROOT/install.sh" "$ROOT/uninstall.sh" "$ROOT/lib.sh")
 TMUX_FILES=("$ROOT/plugin.tmux" "$ROOT"/conf/*.tmux)
 
 echo "# Shell scripts: no network, privilege escalation or dangerous commands"
@@ -44,12 +44,14 @@ check_eq "every if-shell uses -F (format only)" "" \
 echo "# install.sh / uninstall.sh touch only byobu's config directory"
 # Run both against a throwaway HOME and list every file that appeared.
 mkdir -p "$TMPHOME/home"
-HOME="$TMPHOME/home" env -u BYOBU_CONFIG_DIR -u XDG_CONFIG_HOME bash "$ROOT/install.sh" --with-rgb-fix </dev/null >/dev/null 2>&1
+HOME="$TMPHOME/home" env -u BYOBU_CONFIG_DIR -u XDG_CONFIG_HOME bash "$ROOT/install.sh" --with-rgb-fix --with-layout </dev/null >/dev/null 2>&1
 after_install="$(cd "$TMPHOME" && find . -type f | sort)"
-check_eq "install creates only .tmux.conf (no backup: it started empty)" \
-  "./home/.config/byobu/.tmux.conf" "$after_install"
+check_eq "install creates only .tmux.conf and windows.tmux (no backup: it started empty)" \
+  "./home/.config/byobu/.tmux.conf
+./home/.config/byobu/windows.tmux" "$after_install"
 HOME="$TMPHOME/home" env -u BYOBU_CONFIG_DIR -u XDG_CONFIG_HOME bash "$ROOT/uninstall.sh" >/dev/null 2>&1
 check_eq "uninstall leaves .tmux.conf empty again" "0" "$(wc -c < "$TMPHOME/home/.config/byobu/.tmux.conf" | tr -d ' ')"
+check_eq "uninstall leaves windows.tmux empty again" "0" "$(wc -c < "$TMPHOME/home/.config/byobu/windows.tmux" | tr -d ' ')"
 check_eq "nothing was written outside the throwaway HOME's byobu directory" "" \
   "$(cd "$TMPHOME" && find . -type f ! -path './home/.config/byobu/*' | head -3)"
 

@@ -107,6 +107,37 @@ check_eq "install refuses while an old-name block exists" "1" "$(bash "$ROOT/ins
 bash "$ROOT/uninstall.sh" >/dev/null
 check_eq "uninstall removes an old-name block" "set -g mouse on" "$(cat "$BYOBU_CONFIG_DIR/.tmux.conf")"
 
+echo "# Default 2x2 layout (--with-layout)"
+# HOME is a throwaway directory so the pane cwd check proves the path comes from $HOME.
+export HOME="$TMPHOME/home"; mkdir -p "$HOME"
+: > "$BYOBU_CONFIG_DIR/.tmux.conf"; : > "$BYOBU_CONFIG_DIR/windows.tmux"
+bash "$ROOT/install.sh" --with-layout </dev/null >/dev/null
+check_eq "windows.tmux is exactly one line" "1" "$(wc -l < "$BYOBU_CONFIG_DIR/windows.tmux" | tr -d ' ')"
+check_eq "windows.tmux has no quotes or comments" "0" "$(grep -c "[\"'#]" "$BYOBU_CONFIG_DIR/windows.tmux")"
+# Start it the way byobu does: tmux $(cat windows.tmux) -- word-split, no shell parsing.
+# Only -d/-x/-y are added so it can run without a terminal.
+LAYOUT_SOCK="bpm-layout-$$"
+# shellcheck disable=SC2046
+env -u TMUX tmux -L "$LAYOUT_SOCK" -f /dev/null $(sed 's/^new-session/new-session -d -x 160 -y 40/' "$BYOBU_CONFIG_DIR/windows.tmux")
+panes="$(env -u TMUX tmux -L "$LAYOUT_SOCK" list-panes -F '#{pane_left},#{pane_top} #{pane_current_path} #{pane_active}')"
+env -u TMUX tmux -L "$LAYOUT_SOCK" kill-server 2>/dev/null
+check_eq "four panes in a 2x2 grid, all in HOME, focus on top-left" \
+"0,0 $HOME 1
+0,21 $HOME 0
+81,0 $HOME 0
+81,21 $HOME 0" "$panes"
+bash "$ROOT/install.sh" --with-layout </dev/null >/dev/null 2>&1   # already installed: no-op
+check_eq "windows.tmux is unchanged by a second install" "1" "$(wc -l < "$BYOBU_CONFIG_DIR/windows.tmux" | tr -d ' ')"
+bash "$ROOT/uninstall.sh" >/dev/null
+check_eq "uninstall empties windows.tmux" "0" "$(wc -c < "$BYOBU_CONFIG_DIR/windows.tmux" | tr -d ' ')"
+echo "set-option -g status off" > "$BYOBU_CONFIG_DIR/windows.tmux"   # a windows.tmux the user wrote
+check_eq "install --with-layout refuses to overwrite a user's windows.tmux" "1" "$(bash "$ROOT/install.sh" --with-layout </dev/null >/dev/null 2>&1; echo $?)"
+check_eq "...and the user's file is untouched" "set-option -g status off" "$(cat "$BYOBU_CONFIG_DIR/windows.tmux")"
+check_eq "...and nothing else was installed" "0" "$(grep -c '>>> byobu-keyhints' "$BYOBU_CONFIG_DIR/.tmux.conf")"
+bash "$ROOT/install.sh" --no-layout </dev/null >/dev/null
+bash "$ROOT/uninstall.sh" >/dev/null
+check_eq "uninstall leaves a user's windows.tmux alone" "set-option -g status off" "$(cat "$BYOBU_CONFIG_DIR/windows.tmux")"
+
 echo
 echo "Result: $pass passed / $fail failed"
 [ "$fail" -eq 0 ]
