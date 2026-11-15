@@ -117,15 +117,35 @@ check_eq "windows.tmux has no quotes or comments" "0" "$(grep -c "[\"'#]" "$BYOB
 # Start it the way byobu does: tmux $(cat windows.tmux) -- word-split, no shell parsing.
 # Only -d/-x/-y are added so it can run without a terminal.
 LAYOUT_SOCK="bpm-layout-$$"
+tl() { env -u TMUX tmux -L "$LAYOUT_SOCK" "$@"; }
+# Printed only when the 2x2 check below fails. The "after 1s" re-read separates a pane
+# that was read before its shell had moved into HOME (re-read shows HOME) from a tmux
+# that really starts panes somewhere else (re-read still wrong). The pass/fail result
+# is decided by the first read alone.
+layout_diagnostics() {
+  local server_pid
+  server_pid="$(tl display -p '#{pid}')"
+  echo "       --- diagnostics"
+  echo "       $(tmux -V), default-shell=$(tl show -gv default-shell), SHELL=${SHELL:-unset}"
+  echo "       server pid=$server_pid cwd=$(readlink "/proc/$server_pid/cwd" 2>/dev/null)"
+  tl list-panes -F '#{pane_index} #{pane_pid} #{pane_current_command}' |
+    while read -r index pane_pid command; do
+      echo "       pane $index pid=$pane_pid cmd=$command proc-cwd=$(readlink "/proc/$pane_pid/cwd" 2>/dev/null)"
+    done
+  sleep 1
+  echo "       after 1s:"
+  tl list-panes -F '#{pane_index} #{pane_current_path}' | sed 's/^/         pane /'
+}
 # shellcheck disable=SC2046
-env -u TMUX tmux -L "$LAYOUT_SOCK" -f /dev/null $(sed 's/^new-session/new-session -d -x 160 -y 40/' "$BYOBU_CONFIG_DIR/windows.tmux")
-panes="$(env -u TMUX tmux -L "$LAYOUT_SOCK" list-panes -F '#{pane_left},#{pane_top} #{pane_current_path} #{pane_active}')"
-env -u TMUX tmux -L "$LAYOUT_SOCK" kill-server 2>/dev/null
-check_eq "four panes in a 2x2 grid, all in HOME, focus on top-left" \
-"0,0 $HOME 1
+tl -f /dev/null $(sed 's/^new-session/new-session -d -x 160 -y 40/' "$BYOBU_CONFIG_DIR/windows.tmux")
+panes="$(tl list-panes -F '#{pane_left},#{pane_top} #{pane_current_path} #{pane_active}')"
+expected_panes="0,0 $HOME 1
 0,21 $HOME 0
 81,0 $HOME 0
-81,21 $HOME 0" "$panes"
+81,21 $HOME 0"
+check_eq "four panes in a 2x2 grid, all in HOME, focus on top-left" "$expected_panes" "$panes"
+[[ "$panes" == "$expected_panes" ]] || layout_diagnostics
+tl kill-server 2>/dev/null
 bash "$ROOT/install.sh" --with-layout </dev/null >/dev/null 2>&1   # already installed: no-op
 check_eq "windows.tmux is unchanged by a second install" "1" "$(wc -l < "$BYOBU_CONFIG_DIR/windows.tmux" | tr -d ' ')"
 bash "$ROOT/uninstall.sh" >/dev/null
