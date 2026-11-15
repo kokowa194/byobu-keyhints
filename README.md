@@ -10,6 +10,8 @@
 
 A small plugin for byobu (tmux backend). v0.1.0
 
+![Demo: the hint in the status bar changes as you split panes, press the prefix, zoom, enter copy mode and turn on "type into all panes"](docs/demo.svg)
+
 1. **Context-sensitive shortcut hints**: the status bar shows the keys that work in your current situation.
 2. **Optional: rgb-garbage fix**: stops strings like `11;rgb:1717/1414/2121` from leaking into your prompt. Off by default; `install.sh` asks whether you want it.
 3. **Optional: default 2x2 layout**: every new byobu session starts split into four panes, all opened in your home directory. Off by default; `install.sh` asks whether you want it. See [the layout section](#default-2x2-layout-optional).
