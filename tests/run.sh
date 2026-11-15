@@ -138,11 +138,18 @@ layout_diagnostics() {
 }
 # shellcheck disable=SC2046
 tl -f /dev/null $(sed 's/^new-session/new-session -d -x 160 -y 40/' "$BYOBU_CONFIG_DIR/windows.tmux")
-panes="$(tl list-panes -F '#{pane_left},#{pane_top} #{pane_current_path} #{pane_active}')"
 expected_panes="0,0 $HOME 1
 0,21 $HOME 0
 81,0 $HOME 0
 81,21 $HOME 0"
+# A pane's path is only right once its shell has moved into HOME. Read straight after
+# creation, tmux 3.6 (ubuntu-26.04) still reports the server's directory for every
+# pane, while /proc already shows HOME a few ms later. So wait for it, up to 2s.
+for _ in $(seq 20); do
+  panes="$(tl list-panes -F '#{pane_left},#{pane_top} #{pane_current_path} #{pane_active}')"
+  [[ "$panes" == "$expected_panes" ]] && break
+  sleep 0.1
+done
 check_eq "four panes in a 2x2 grid, all in HOME, focus on top-left" "$expected_panes" "$panes"
 [[ "$panes" == "$expected_panes" ]] || layout_diagnostics
 tl kill-server 2>/dev/null
