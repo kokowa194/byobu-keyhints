@@ -9,7 +9,7 @@
 ![shell: bash only](https://img.shields.io/badge/shell-bash_only-lightgrey)
 ![no sudo, no network](https://img.shields.io/badge/install-no_sudo%2C_no_network-success)
 
-A small plugin for byobu (tmux backend). v0.1.0
+A small plugin for byobu (tmux backend). v0.2.0
 
 ![Demo: the hint in the status bar changes as you split panes, press the prefix, zoom, enter copy mode and turn on "type into all panes"](docs/demo.svg)
 

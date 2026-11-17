@@ -1,4 +1,4 @@
-# byobu-keyhints v0.1.0
+# byobu-keyhints v0.2.0
 # Entry point. install.sh makes byobu's .tmux.conf source this file.
 # Under tpm, byobu-keyhints.tmux sources it. Keep this file non-executable:
 # tpm tries to execute every *.tmux in this directory (tests/audit.sh checks the mode).
