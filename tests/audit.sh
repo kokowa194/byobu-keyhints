@@ -3,7 +3,7 @@
 #   - nothing here uses the network, sudo, eval or recursive delete
 #   - the .tmux files run no shell commands (the "zero shell" claim)
 #   - install.sh / uninstall.sh only touch byobu's config directory
-#   - every tracked file is plain text
+#   - every tracked file is plain text, and only the tpm entry point is an executable .tmux
 #   bash tests/audit.sh
 set -uo pipefail
 
@@ -19,7 +19,7 @@ check_eq() { # check_eq <description> <expected> <actual>
 # Code lines only: drop comment-only lines so prose cannot trigger a match.
 code() { grep -hv '^[[:space:]]*#' "$@"; }
 
-SCRIPTS=("$ROOT/install.sh" "$ROOT/uninstall.sh" "$ROOT/lib.sh")
+SCRIPTS=("$ROOT/install.sh" "$ROOT/uninstall.sh" "$ROOT/lib.sh" "$ROOT/byobu-keyhints.tmux")
 TMUX_FILES=("$ROOT/plugin.tmux" "$ROOT"/conf/*.tmux)
 
 echo "# Shell scripts: no network, privilege escalation or dangerous commands"
@@ -55,10 +55,14 @@ check_eq "uninstall leaves windows.tmux empty again" "0" "$(wc -c < "$TMPHOME/ho
 check_eq "nothing was written outside the throwaway HOME's byobu directory" "" \
   "$(cd "$TMPHOME" && find . -type f ! -path './home/.config/byobu/*' | head -3)"
 
-echo "# Files are plain text"
+echo "# Files are plain text; file modes"
 if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   binary="$(git -C "$ROOT" ls-files | while read -r f; do grep -qI . "$ROOT/$f" 2>/dev/null || echo "$f"; done)"
   check_eq "every tracked file is text" "" "$binary"
+  # tpm tries to execute every *.tmux file in the top directory. Only the tpm entry point
+  # may be executable; plugin.tmux and conf/*.tmux are tmux configs, not scripts.
+  executable_tmux="$(git -C "$ROOT" ls-files -s -- '*.tmux' | awk '$1 == "100755" { print $4 }')"
+  check_eq "byobu-keyhints.tmux is the only executable .tmux file" "byobu-keyhints.tmux" "$executable_tmux"
 else
   echo "skip - not a git checkout"
 fi

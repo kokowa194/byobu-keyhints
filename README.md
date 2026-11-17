@@ -9,7 +9,7 @@
 ![shell: bash only](https://img.shields.io/badge/shell-bash_only-lightgrey)
 ![no sudo, no network](https://img.shields.io/badge/install-no_sudo%2C_no_network-success)
 
-A small plugin for byobu (tmux backend). v0.1.0
+A small plugin for byobu (tmux backend). v0.2.0
 
 ![Demo: the hint in the status bar changes as you split panes, press the prefix, zoom, enter copy mode and turn on "type into all panes"](docs/demo.svg)
 
@@ -34,8 +34,9 @@ Checked from the top; the first match wins.
 | Several panes in the window | move, resize, zoom, close |
 | A single pane | split, new window, switch window, rename |
 
-The plugin calls no shell scripts. The hint is built purely from tmux format conditionals,
+The hint calls no shell scripts. It is built purely from tmux format conditionals,
 so it costs nothing and switches the instant you press a key.
+(Only when you [install with tpm](#with-tpm) does a three-line script run, once, to load the config.)
 
 **Toggle the hint on/off: `prefix`, then `H`**
 
@@ -115,6 +116,27 @@ You can skip the script. Add this line to `.tmux.conf` (and, optionally, the rgb
 set -g @byobu_fix_osc_garbage 1    # optional
 source-file -q "/absolute/path/to/byobu-keyhints/plugin.tmux"
 ```
+
+### With tpm
+
+If you use [tpm](https://github.com/tmux-plugins/tpm) (tmux plugin manager) inside byobu, add these lines to the end of byobu's `.tmux.conf` (`~/.byobu/.tmux.conf` if `~/.byobu` exists, otherwise `~/.config/byobu/.tmux.conf`):
+
+<!-- tpm-config: tests/tpm.sh loads exactly this block through a real tpm -->
+```tmux
+set -g @tpm_plugins 'tmux-plugins/tpm kokowa194/byobu-keyhints'
+run '~/.tmux/plugins/tpm/tpm'
+```
+
+Then press `F5`, and press `prefix`, then `Shift+i` (`I`) to let tpm download the plugin.
+
+- **Use `@tpm_plugins`, not `set -g @plugin`.** tpm finds `@plugin` lines by reading `~/.tmux.conf` (or `~/.config/tmux/tmux.conf`), but byobu loads its own `.tmux.conf` instead, so tpm never sees them. `@tpm_plugins` is read from the running tmux, so it works from byobu's file. (If you already keep `@plugin` lines in `~/.tmux.conf`, adding `source-file ~/.tmux.conf` before the `run` line also works.)
+- To enable the [rgb-garbage fix](#the-rgb-garbage-fix-optional), put `set -g @byobu_fix_osc_garbage 1` **before** the `run` line.
+- The [default 2x2 layout](#default-2x2-layout-optional) is only available through `install.sh`.
+- Pick one route. Using both tpm and `install.sh` is harmless (loading twice does not stack anything), but pointless.
+- tpm itself uses `git` and the network to download plugins. The "no sudo, no network" badge describes the `install.sh` route.
+- Uninstall: remove `kokowa194/byobu-keyhints` from `@tpm_plugins`, press `prefix`, then `Alt+u`, and restart byobu.
+
+Under tpm, `byobu-keyhints.tmux` is the entry point: a three-line script that passes `plugin.tmux` to tmux once when the config is loaded.
 
 ### If you move the folder
 
@@ -208,6 +230,7 @@ Both scripts need only bash and tmux. Neither touches your running byobu or your
 ```bash
 bash tests/audit.sh   # are the README's "no network / no sudo / only touches byobu's config" claims true?
 bash tests/run.sh     # does the plugin behave as described?
+TPM_DIR=/path/to/tpm bash tests/tpm.sh   # does the README's tpm setup work? (skipped without TPM_DIR)
 ```
 
 `tests/audit.sh` checks that:
@@ -215,20 +238,25 @@ bash tests/run.sh     # does the plugin behave as described?
 - the shell scripts contain no network commands, `sudo`, `eval`, `base64`, `chmod`/`chown` or recursive `rm`, and no URLs appear in any script or `.tmux` file;
 - the `.tmux` files run no shell commands (no `run-shell`, no `#(...)`, and every `if-shell` uses `-F`);
 - `install.sh` / `uninstall.sh`, run against a throwaway `HOME`, create only `.config/byobu/.tmux.conf` and `windows.tmux`, and uninstall leaves both empty again;
-- every tracked file is plain text;
+- every tracked file is plain text, and `byobu-keyhints.tmux` (the tpm entry point) is the only executable `.tmux` file;
 - `shellcheck` is clean (skipped if it is not installed).
 
-`tests/run.sh` starts tmux servers on private sockets and checks the hint for each situation, real rendering when the prefix is pressed, the `H` key, the optional rgb fix, and install/uninstall.
+`tests/run.sh` starts tmux servers on private sockets and checks the hint for each situation, real rendering when the prefix is pressed, the `H` key, the optional rgb fix, install/uninstall, and loading through the tpm entry point the way tpm calls it.
 It also fails if a non-ASCII character appears in any `.tmux` file.
 
-GitHub Actions runs both on Ubuntu 22.04 (tmux 3.2a, the documented minimum), Ubuntu 24.04 (tmux 3.4) and Ubuntu 26.04 (tmux 3.6); see the `test` badge at the top.
+`tests/tpm.sh` loads the plugin through a real tpm with the config block from [With tpm](#with-tpm), copied out of this README, in a stand-in for byobu's startup (only byobu's `.tmux.conf` is read).
+It also confirms that `set -g @plugin` lines in that file are not picked up, which is why the README uses `@tpm_plugins`.
+It needs a tpm checkout and never downloads anything itself.
+
+GitHub Actions runs all three on Ubuntu 22.04 (tmux 3.2a, the documented minimum), Ubuntu 24.04 (tmux 3.4) and Ubuntu 26.04 (tmux 3.6); see the `test` badge at the top.
 
 ## Tested on
 
 | How | Environment |
 |---|---|
 | By hand (daily use) | WSL2 Ubuntu 24.04 / byobu 6.11 / tmux 3.4 / Windows Terminal |
-| CI, `tests/audit.sh` + `tests/run.sh` | Ubuntu 22.04 (tmux 3.2a), Ubuntu 24.04 (tmux 3.4), Ubuntu 26.04 (tmux 3.6) |
+| By hand, tpm route | WSL2 Ubuntu 24.04 / byobu 6.11 / tmux 3.4 / tpm master `e261deb` |
+| CI, `tests/audit.sh` + `tests/run.sh` + `tests/tpm.sh` | Ubuntu 22.04 (tmux 3.2a), Ubuntu 24.04 (tmux 3.4), Ubuntu 26.04 (tmux 3.6); tpm master `e261deb` |
 
 CI runs tmux without byobu, so byobu itself is only checked by hand.
 
