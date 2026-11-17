@@ -6,12 +6,14 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOCK="bpm-test-$$"
 OUTER="bpm-outer-$$"
+TPM_SOCK="bpm-tpm-$$"
 TMPHOME="$(mktemp -d)"
 pass=0; fail=0
 
 t()  { env -u TMUX tmux -L "$SOCK" "$@"; }
 to() { env -u TMUX tmux -L "$OUTER" "$@"; }
-cleanup() { t kill-server 2>/dev/null; to kill-server 2>/dev/null; rm -rf "$TMPHOME"; }
+tt() { env -u TMUX tmux -L "$TPM_SOCK" "$@"; }
+cleanup() { t kill-server 2>/dev/null; to kill-server 2>/dev/null; tt kill-server 2>/dev/null; rm -rf "$TMPHOME"; }
 trap cleanup EXIT
 
 check() { # check <description> <expected substring> <actual value>
@@ -68,6 +70,26 @@ to send-keys -t o H; sleep 0.3
 check_eq "prefix + H turns the hint off" "0" "$(t show -gv @byobu_hint_enabled)"
 to send-keys -t o C-a H; sleep 0.3
 check_eq "prefix + H again turns it back on" "1" "$(t show -gv @byobu_hint_enabled)"
+
+echo "# tpm entry point (byobu-keyhints.tmux)"
+# Loads the plugin the way tpm does (scripts/source_plugins.sh): from inside the server,
+# try to execute every *.tmux file in the top directory and ignore failures. run-shell sets
+# TMUX, so the bare `tmux` in byobu-keyhints.tmux reaches this server. tests/tpm.sh repeats
+# this with a real tpm.
+# The trailing `true` matters: executing the non-executable plugin.tmux fails with 126, and
+# run-shell would show that exit status in view mode, which the hint then reports as copy mode.
+tpm_load() { tt run-shell "for f in '$ROOT'/*.tmux; do [ -f \"\$f\" ] || continue; \"\$f\" >/dev/null 2>&1; done; true"; }
+tt -f /dev/null new -d -s t -x 200 -y 40
+tt set -g prefix C-a
+tt set -g status-right 'BYOBU_RIGHT'
+tpm_load; tpm_load                          # tpm runs again on every config reload
+check_eq "tpm: hint is prepended to status-right exactly once" '#{E:@byobu_hint}BYOBU_RIGHT' "$(tt show -gv status-right)"
+check "tpm: single pane shows the split hint" "Ctrl+F2:Split left/right" "$(tt display -p -t t '#{E:@byobu_hint}')"
+check_eq "tpm: escape-time is not 50 by default" "0" "$(tt show -sv escape-time | grep -c '^50$')"
+tt set -g @byobu_fix_osc_garbage 1
+tpm_load
+check_eq "tpm: escape-time becomes 50 when @byobu_fix_osc_garbage is 1" "50" "$(tt show -sv escape-time)"
+tt kill-server 2>/dev/null
 
 echo "# ASCII only in tmux config"
 # Wide characters break status-bar width math, so .tmux files must stay ASCII.

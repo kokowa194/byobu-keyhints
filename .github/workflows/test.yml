@@ -22,6 +22,15 @@ jobs:
       # Pinned to a commit SHA: a tag can be moved to other code, a SHA cannot.
       # When updating, take the SHA from `git ls-remote --tags` and keep the comment in sync.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # tpm for tests/tpm.sh. Pinned to a commit for the same reason. tpm's README tells users
+      # to clone master, so this is master rather than the last tag (v3.1.0).
+      # When updating, take the SHA from `git ls-remote https://github.com/tmux-plugins/tpm master`.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tmux-plugins/tpm
+          ref: e261deb1b47614eed3400089ce7197dc68acc4eb # master, 2026-05-17
+          path: .tpm
+          persist-credentials: false
       - name: Install tmux and shellcheck
         run: sudo apt-get update && sudo apt-get install -y tmux shellcheck
       - run: tmux -V
@@ -29,3 +38,5 @@ jobs:
         run: bash tests/audit.sh
       - name: Tests
         run: bash tests/run.sh
+      - name: Tests through a real tpm
+        run: TPM_DIR="$GITHUB_WORKSPACE/.tpm" bash tests/tpm.sh
